@@ -1,5 +1,6 @@
 module processor;
 reg [31:0] pc; //32-bit prograom counter
+reg [31:0] dpack; // register to hold the read data from memory
 reg clk; //clock
 reg [7:0] datmem[0:31],mem[0:31]; //32-size data and instruction memory (8 bit(1 byte) for each location)
 wire [31:0] 
@@ -30,8 +31,8 @@ out1;		//Write data input of Register File
 
 wire [15:0] inst15_0;	//15-0 bits of instruction
 wire [25:0] inst25_0;	//25-0 bits of instruction
-wire [31:0] instruc,	//current instruction
-dpack;	//Read data output of memory (data read from memory)
+wire [31:0] instruc;	//current instruction
+
 
 wire [2:0] gout;	//Output of ALU control unit
 
@@ -67,6 +68,15 @@ datmem[sum[4:0]+1]=out9[23:16];
 datmem[sum[4:0]]=out9[31:24];
 end
 
+// Conditional read data from memory
+always @(posedge clk)
+if (memread)
+begin
+// Read data from memory, sum stores address
+dpack <= {datmem[sum[5:0]], datmem[sum[5:0]+1], datmem[sum[5:0]+2], datmem[sum[5:0]+3]};
+// Reset memread after reading the data
+memread <= 0;
+end
 
 //instruction memory
 //4-byte instruction
@@ -87,9 +97,6 @@ assign datab=registerfile[out8];//Read register 2
 
 always @(posedge clk)
  registerfile[out1]= regwrite ? out6:registerfile[out1];//Write data to register
-
-//read data from memory, sum stores address
-assign dpack={datmem[sum[5:0]],datmem[sum[5:0]+1],datmem[sum[5:0]+2],datmem[sum[5:0]+3]};
 
 //multiplexers
 //mux with RegDst control

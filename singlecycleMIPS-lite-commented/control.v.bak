@@ -176,7 +176,7 @@ module control(
                 RegDst = 2'b11;
                 ALUSrc = 0;
                 MemToReg = 0;
-                RegWrite = conditionBgtzal;
+                RegWrite = 0;
                 MemRead = 0;
                 MemWrite = 0;
                 Branch = 0;
