@@ -1,0 +1,17 @@
+@000000
+0
+14
+40
+00 // 3 no reg
+18 // 4 no reg
+30 //  5 no reg
+ffef  // 6 no reg jmnor için cevap 16 gelsin diye
+ffef  // 7
+14 //8 no reg
+28 //9 no reg
+01 //10 no reg
+00 //11 no reg
+00 // 12 no reg
+7fff // 13 no reg add operation overflow olcak
+01 // 14 no reg add op.
+00 // 15 no reg
