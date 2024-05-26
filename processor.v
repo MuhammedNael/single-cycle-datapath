@@ -1,0 +1,205 @@
+module processor;
+reg [31:0] pc; //32-bit prograom counter
+reg clk; //clock
+reg [7:0] datmem[0:31],mem[0:31]; //32-size data and instruction memory (8 bit(1 byte) for each location)
+wire [31:0] 
+dataa,	//Read data 1 output of Register File
+datab,	//Read data 2 output of Register File
+out2,		//Output of mux with ALUSrc control-mult2
+out3,		//Output of mux with MemToReg control-mult3
+out4,		//Output of mux with (Branch&ALUZero) control-mult4
+out5, // write PC (last mux)
+out6, // which data to write to reg
+out7, // which extension
+out9, // write data to mem mux
+sum,		//ALU result
+extad,	//Output of sign-extend unit
+zextad, // output of zero extend
+adder1out,	//Output of adder which adds PC and 4-add1
+adder2out,	//Output of adder which adds PC+4 and 2 shifted sign-extend result-add2
+sextad,	//Output of shift left 2 unit
+concat;
+
+wire [5:0] inst31_26;	//31-26 bits of instruction
+wire [5:0] inst5_0;	//5-0 bits of instruction
+wire [4:0] out8,
+inst25_21,	//25-21 bits of instruction
+inst20_16,	//20-16 bits of instruction
+inst15_11,	//15-11 bits of instruction
+out1;		//Write data input of Register File
+
+wire [15:0] inst15_0;	//15-0 bits of instruction
+wire [25:0] inst25_0;	//25-0 bits of instruction
+wire [31:0] instruc,	//current instruction
+dpack;	//Read data output of memory (data read from memory)
+
+wire [2:0] gout;	//Output of ALU control unit
+
+wire zout,	//Zero output of ALU
+Vin, Nin,
+pcsrc,	//Output of AND gate with Branch and ZeroOut inputs
+gt_zero, // used for checking last bit
+gtz,
+Vout, Zout, Nout,
+statusAnd1, statusAnd2,
+statusOr, statusNot,
+selectReg2,
+//Control output signals 
+alusrc,memtoreg,regwrite,memread,memwrite,branch,balv,bgtzal,
+jrsal,nandi,brnv,muxreg,statusRegWrite;
+wire [1:0] aluop, jump, regdest;
+
+//32-size register file (32 bit(1 word) for each register)
+reg [31:0] registerfile[0:31];
+
+integer i;
+
+// datamemory connections
+
+always @(posedge clk)
+//write data to memory
+if (memwrite)
+begin 
+//sum stores address,datab stores the value to be written
+datmem[sum[4:0]+3]=out9[7:0];
+datmem[sum[4:0]+2]=out9[15:8];
+datmem[sum[4:0]+1]=out9[23:16];
+datmem[sum[4:0]]=out9[31:24];
+end
+
+
+//instruction memory
+//4-byte instruction
+ assign instruc={mem[pc[4:0]],mem[pc[4:0]+1],mem[pc[4:0]+2],mem[pc[4:0]+3]};
+ assign inst31_26=instruc[31:26];
+ assign inst25_21=instruc[25:21];
+ assign inst20_16=instruc[20:16];
+ assign inst15_11=instruc[15:11];
+ assign inst15_0=instruc[15:0];
+ assign inst25_0=instruc[25:0];
+ assign inst5_0=instruc[5:0];
+
+
+// registers
+
+assign dataa=registerfile[inst25_21];//Read register 1
+assign datab=registerfile[out8];//Read register 2
+
+always @(posedge clk)
+ registerfile[out1]= regwrite ? out6:registerfile[out1];//Write data to register
+
+//read data from memory, sum stores address
+assign dpack={datmem[sum[5:0]],datmem[sum[5:0]+1],datmem[sum[5:0]+2],datmem[sum[5:0]+3]};
+
+//multiplexers
+//mux with RegDst control
+mult4_to_2_5  mult1(out1, instruc[20:16],instruc[15:11],5'b11111,5'b11001,regdest);
+
+//mux with ALUSrc control
+mult2_to_1_32 mult2(out2, datab,extad,alusrc);
+
+//mux with MemToReg control
+mult2_to_1_32 mult3(out3,sum,dpack,memtoreg);
+
+//mux with (Branch&ALUZero) control (update to 8)
+mult8_to_3_32 mult4(out4, adder1out,adder2out,sum,32'b0,adder2out,32'b0,32'b0,32'b0,gtz,statusOr,pcsrc);
+// mux to pc (last mux)
+mult8_to_3_32 mult5(out5, concat,out4,32'b0,32'b0,out4,out4,out3,sum,statusNot,jump[1],jump[0]);
+
+// select write data to reg
+mult2_to_1_32 mult6(out6, adder1out,out3,muxreg);
+
+// select extension
+mult2_to_1_32 mult7(out7, sextad,zextad,nandi);
+
+// select reg 2
+mult2_to_1_5  mult8(out8, instruc[20:16],5'b00000,selectReg2);
+
+// select data to write into mem
+mult2_to_1_32 mult9(out9,datab,adder1out,jrsal);
+
+
+// load pc
+always @(negedge clk)
+if (i == 31)
+begin
+pc=32'b100;
+i = i+1;
+end
+else
+pc=out5;
+
+// alu, adder and control logic connections
+
+//ALU unit
+alu32 alu1(sum,dataa,out2,zout,gout,Nin,Vin);
+
+// status register
+statusRegister status(statusRegWrite,Vin,zout,Nin,Vout,Zout,Nout);
+assign statusAnd1 = ~Vout && brnv;
+assign statusAnd2 = Vout && balv;
+assign statusOr = statusAnd1 || statusAnd2;
+assign statusNot = ~statusOr;
+
+//adder which adds PC and 4
+adder add1(pc,32'h4,adder1out);
+
+//adder which adds PC+4 and 2 shifted sign-extend result
+adder add2(adder1out,sextad,adder2out);
+
+//Control unit
+control cont(statusAnd2,gtz,inst31_26,inst5_0,regdest,alusrc,memtoreg,regwrite,memread,memwrite,
+branch,aluop,jump,brnv,nandi,muxreg,balv,bgtzal,jrsal,statusRegWrite);
+
+//Sign extend unit
+signext sext(instruc[15:0],extad);
+//Zero extend unit
+zeroext zext(instruc[15:0], zextad);
+
+assign selectReg2 = brnv || jrsal || bgtzal;
+
+//ALU control unit
+alucont acont(aluop[1],aluop[0],instruc[5],instruc[4],instruc[3],instruc[2], instruc[1], instruc[0] ,gout);
+
+//Shift-left 2 unit
+shift shift2(sextad,extad);
+
+direct_addressing directaddr(adder1out,inst25_0,concat);
+is_greater_than_zero is_gt_z(dataa, gt_zero);
+assign gtz = bgtzal && gt_zero;
+
+//AND gate
+assign pcsrc=branch && zout; 
+
+//initialize datamemory,instruction memory and registers
+//read initial data from files given in hex
+initial
+begin
+$readmemh("C:/Users/huawei/Desktop/Project/single-cycle-datapath-main/singlecycleMIPS-lite-commented - Special Test/initDM.dat",datmem); //read Data Memory
+$readmemh("C:/Users/huawei/Desktop/Project/single-cycle-datapath-main/singlecycleMIPS-lite-commented - Special Test/initIM.dat",mem);//read Instruction Memory
+$readmemh("C:/Users/huawei/Desktop/Project/single-cycle-datapath-main/singlecycleMIPS-lite-commented - Special Test/initReg.dat",registerfile);//read Register File
+
+	for(i=0; i<31; i=i+1)
+	$display("Instruction Memory[%0d]= %h  ",i,mem[i],"Data Memory[%0d]= %h   ",i,datmem[i],
+	"Register[%0d]= %h",i,registerfile[i]);
+end
+
+initial
+begin
+pc=0;
+#400 $finish;
+	
+end
+initial
+begin
+clk=0;
+//40 time unit for each cycle
+forever #20  clk=~clk;
+end
+initial 
+begin
+  $monitor($time,"PC %h",pc,"  SUM %h",sum,"   INST %h",instruc[31:0],
+"   REGISTER %h %h %h %h ",registerfile[4],registerfile[5], registerfile[6],registerfile[1] );
+end
+endmodule
+
