@@ -1,0 +1,12 @@
+nandi test 
+nandi $8, $9, 1111 1111 1111 1111
+010000 01000 01001 1111 1111 1111 1111
+$8 ile label nand yapılır $9'a yazılır.
+41 09 ff ff
+
+jmnor test
+000000 00110 00111 00000 00000 100111
+jmnor $6, $7
+$6 ile $7 nor yapılır sonra oraya jumplanır 
+$31 içinde pc+4 olacak
+00 c7 00 27
