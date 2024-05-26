@@ -18,6 +18,13 @@ brnv $4
 $4 = 24 
 bu yüzden 24'e zıplayacak
 
+jmnor test
+000000 00110 00111 00000 00000 100111
+jmnor $6, $7
+$6 ile $7 nor yapılır sonra oraya jumplanır 
+$31 içinde pc+4 olacak
+00 c7 00 27
+
 test add
 add $15, $13, $14
 000000 01111 01101 01110 00000 100000
@@ -27,15 +34,28 @@ overflow var v=1 olcak
 test balv
 100000 0000 0000 0000 0000 0000 0000 10
 balv 2
-80 00 00 00
+80 00 00 02
 pc'nin ilk 4 biti 0 olduğu için etkisi yok sadece target'ı 4 ile çarpıcaz yani 8 ileri gidicez. 
 $31  = pc+4
 
-jmnor test
-000000 00110 00111 00000 00000 100111
-jmnor $6, $7
-$6 ile $7 nor yapılır sonra oraya jumplanır 
-$31 içinde pc+4 olacak
-00 c7 00 27
+bgtzal test
+100001 00101 00100 0000 0000 0000 0001
+bgtzal $5, 0000 0000 0000 0001
+84 a4 00 01
 
-test bgtzal
+sub test
+sub $12, $10, $11
+000000 01010 01011 01100 00000 100010
+$12 = $10 - $11
+01 4B 60 22
+
+jrsal test
+010001 00011 00101 0000 0000 0000 0000 
+jrsal $3
+44 65 00 00
+
+sub test
+sub $12, $10, $11
+000000 01010 01011 01100 00000 100010
+$12 = $10 - $11
+01 4B 60 22

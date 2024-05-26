@@ -2,9 +2,9 @@
 0
 14
 40
-60
+00 // 3 no reg
 18 // 4 no reg
-30
+30 //  5 no reg
 ffef  // 6 no reg jmnor için cevap 16 gelsin diye
 ffef  // 7
 14 //8 no reg
