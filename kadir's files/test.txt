@@ -32,9 +32,9 @@ $15 = $13 + $14
 overflow var v=1 olcak
 
 test balv
-100000 0000 0000 0000 0000 0000 0000 10
-balv 2
-80 00 00 02
+100000 0000 0000 0000 0000 0000 0001 11
+balv 7
+80 00 00 07
 pc'nin ilk 4 biti 0 olduğu için etkisi yok sadece target'ı 4 ile çarpıcaz yani 8 ileri gidicez. 
 $31  = pc+4
 
